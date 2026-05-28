@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Income = require("../models/Income");
 const Expences = require("../models/Expences");
+const Goal = require("../models/Goal");
 
 const router = express.Router();
 
@@ -202,7 +203,7 @@ router.post("/addExpenses", async (req, res) => {
 
 router.post("/getExpenses", async (req, res) => {
   try {
-    const parentId = `${req.body.userId}`;
+    const parentId = `${req.body.parentId}`;
 
     if (!parentId) {
       return res.status(400).json({ message: "id is required" });
@@ -234,4 +235,126 @@ router.delete("/deleteExpenses", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+/* ================= Goals ================= */
+router.post("/addGoal", async (req, res) => {
+  try {
+    const {
+      parentId,
+      userId,
+      name,
+      targetAmount,
+      currentAmount,
+      incrementMonthly,
+      dateCreated,
+      category,
+    } = req.body;
+    console.log(
+      "Add goal",
+      parentId,
+      userId,
+      name,
+      targetAmount,
+      currentAmount,
+      incrementMonthly,
+      dateCreated,
+      category,
+    );
+    if (
+      !parentId ||
+      !userId ||
+      !name ||
+      !targetAmount ||
+      !currentAmount ||
+      !dateCreated ||
+      !category
+    ) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const goal = new Goal({
+      parentId,
+      userId,
+      name,
+      targetAmount,
+      currentAmount,
+      incrementMonthly,
+      dateCreated,
+      category,
+    });
+    console.log("Goal Created");
+    await goal.save();
+
+    res.status(201).json({ message: "Goal added successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/getGoal", async (req, res) => {
+  try {
+    const parentId = `${req.body.parentId}`;
+    if (!parentId) {
+      return res.status(400).json({ message: "id is required" });
+    }
+
+    const goals = await Goal.find({ parentId });
+    res.json({ goals });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.delete("/deleteGoal", async (req, res) => {
+  try {
+    const { parentId, userId } = req.body;
+    if (!parentId || !userId) {
+      return res.status(400).json({ message: "Goal id is required" });
+    }
+
+    const deletedIncome = await Goal.findOneAndDelete({ parentId, userId });
+    if (!deletedIncome) {
+      return res.status(404).json({ message: "Expense not found" });
+    }
+
+    res.json({ message: "Expense deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.put("/updateGoal", async (req, res) => {
+  try {
+    console.log("Update goal Body", req.body);
+    const { parentId, userId, ...updateData } = req.body;
+    console.log("Update goal", parentId, userId, updateData);
+
+    if (!parentId || !userId) {
+      return res
+        .status(400)
+        .json({ message: "Goal ID and parent ID are required" });
+    }
+
+    const updatedGoal = await Goal.findOneAndUpdate(
+      { parentId, userId },
+      updateData,
+      {
+        runValidators: true,
+        returnDocument: "after",
+      },
+    );
+
+    if (!updatedGoal) {
+      return res.status(404).json({ message: "Goal not found" });
+    }
+    console.log("Update goal Successfully", updatedGoal);
+    res.json({ message: "Goal updated successfully", goal: updatedGoal });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = router;
